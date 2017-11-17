@@ -32,21 +32,29 @@ public class Hello
 	//initial min and max HSV filter values.
 	//these will be changed using trackbars
 	
-	/*yellow
-	int H_MIN = 60;
-	int H_MAX = 70;
-	int S_MIN = 90;
-	int S_MAX = 100;
-	int V_MIN = 90;
-	int V_MAX = 100;
+	/*orange
+	int H_MIN = 0;
+	int H_MAX = 72;
+	int S_MIN = 105;
+	int S_MAX = 233;
+	int V_MIN = 161;
+	int V_MAX = 238;
 	//*/
+	///*orange
+		int H_MIN =131;
+		int H_MAX = 183;
+		int S_MIN = 80;
+		int S_MAX = 179;
+		int V_MIN = 98;
+		int V_MAX = 255;
+		//*/
 	///*blue
-	int H_MIN = 88;
-	int H_MAX = 126;
-	int S_MIN = 192;
-	int S_MAX = 255;
-	int V_MIN = 68;
-	int V_MAX = 255;
+	int H_MIN1 = 88;
+	int H_MAX1 = 126;
+	int S_MIN1 = 192;
+	int S_MAX1 = 255;
+	int V_MIN1 = 82;
+	int V_MAX1 = 255;
 	//*/
 	/*red
 		int H_MIN = 88;
@@ -72,8 +80,8 @@ public class Hello
 	//max number of objects to be detected in frame
 	int MAX_NUM_OBJECTS=50;
 	//minimum and maximum object area
-	int MIN_OBJECT_AREA = 20*20;
-	int MAX_OBJECT_AREA = (int) (FRAME_HEIGHT*FRAME_WIDTH/1.5);
+	int MIN_OBJECT_AREA = 40*40;
+	int MAX_OBJECT_AREA = 200*200;
 	//names that will appear at the top of each window
 	String windowName = "Original Image";
 	String windowName1 = "HSV Image";
@@ -85,7 +93,7 @@ public class Hello
 		return number+"";
 	}
 
-	void drawObject(int x, int y,Mat frame){
+	void drawObject(int x, int y,Mat frame,Scalar c){
 
 		//use some of the openCV drawing functions to draw cross hairs
 		//on your tracked image!
@@ -93,22 +101,24 @@ public class Hello
 		//UPDATE:JUNE 18TH, 2013
 		//added 'if' and 'else' statements to prevent
 		//memory errors from writing off the screen (ie. (-25,-25) is not within the window!)
-
-		Imgproc.circle(frame,new Point(x,y),20,new Scalar(0,255,0),2);
+		int h=(int)frame.get(FRAME_WIDTH/2,FRAME_HEIGHT/2)[0];
+		int s=(int)frame.get(FRAME_WIDTH/2,FRAME_HEIGHT/2)[1];
+		int l=(int)frame.get(FRAME_WIDTH/2,FRAME_HEIGHT/2)[2];
+		Imgproc.circle(frame,new Point(x,y),20,c,2);
 		if(y-25>0)
-			Imgproc.line(frame,new Point(x,y),new Point(x,y-25),new Scalar(0,255,0),2);
-		else Imgproc.line(frame,new Point(x,y),new Point(x,0),new Scalar(0,255,0),2);
+			Imgproc.line(frame,new Point(x,y),new Point(x,y-25),c,2);
+		else Imgproc.line(frame,new Point(x,y),new Point(x,0),c,2);
 		if(y+25<FRAME_HEIGHT)
-			Imgproc.line(frame,new Point(x,y),new Point(x,y+25),new Scalar(0,255,0),2);
-		else Imgproc.line(frame,new Point(x,y),new Point(x,FRAME_HEIGHT),new Scalar(0,255,0),2);
+			Imgproc.line(frame,new Point(x,y),new Point(x,y+25),c,2);
+		else Imgproc.line(frame,new Point(x,y),new Point(x,FRAME_HEIGHT),c,2);
 		if(x-25>0)
-			Imgproc.line(frame,new Point(x,y),new Point(x-25,y),new Scalar(0,255,0),2);
-		else Imgproc.line(frame,new Point(x,y),new Point(0,y),new Scalar(0,255,0),2);
+			Imgproc.line(frame,new Point(x,y),new Point(x-25,y),c,2);
+		else Imgproc.line(frame,new Point(x,y),new Point(0,y),c,2);
 		if(x+25<FRAME_WIDTH)
-			Imgproc.line(frame,new Point(x,y),new Point(x+25,y),new Scalar(0,255,0),2);
-		else Imgproc.line(frame,new Point(x,y),new Point(FRAME_WIDTH,y),new Scalar(0,255,0),2);
-
-		Imgproc.putText(frame,intToString(x)+","+intToString(y),new Point(x,y+30),1,1,new Scalar(0,255,0),2);
+			Imgproc.line(frame,new Point(x,y),new Point(x+25,y),c,2);
+		else Imgproc.line(frame,new Point(x,y),new Point(FRAME_WIDTH,y),c,2);		
+		//Imgproc.putText(frame,"("+h+","+s+","+l+")",new Point(FRAME_WIDTH/2+30,FRAME_HEIGHT/2),1,1,c,2);
+		//Imgproc.circle(frame,new Point(FRAME_WIDTH/2,FRAME_HEIGHT/2),10,c,2);
 		 
 	}
 	void morphOps(Mat thresh){
@@ -130,7 +140,7 @@ public class Hello
 
 
 	}
-	void trackFilteredObject(int x, int y, Mat threshold, Mat cameraFeed){
+	void trackFilteredObject(int x, int y, Mat threshold, Mat cameraFeed,Scalar c){
 
 		Mat temp=new Mat();
 		threshold.copyTo(temp);
@@ -162,13 +172,14 @@ public class Hello
 						refArea = area;
 					}else objectFound = false;
 
-
+					if(objectFound ==true){
+						
+						Imgproc.putText(cameraFeed,"Tracking Object",new Point(0,50),2,1,c,2);
+						//draw object location on screen
+						drawObject(x,y,cameraFeed,c);}
 				}
 				//let user know you found an object
-				if(objectFound ==true){
-					Imgproc.putText(cameraFeed,"Tracking Object",new Point(0,50),2,1,new Scalar(0,255,0),2);
-					//draw object location on screen
-					drawObject(x,y,cameraFeed);}
+				
 
 			}else Imgproc.putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",new Point(0,50),1,2,new Scalar(0,0,255),2);
 		}else{
@@ -188,6 +199,7 @@ public class Hello
 		Mat HSV=new Mat();
 		//matrix storage for binary threshold image
 		Mat threshold=new Mat();
+		Mat threshold1=new Mat();
 		//x and y values for the location of the object
 		int x=0, y=0;
 		//create slider bars for HSV filtering
@@ -209,16 +221,20 @@ public class Hello
 			//filter HSV image between values and store filtered image to
 			//threshold matrix
 			Core.inRange(HSV,new Scalar(H_MIN,S_MIN,V_MIN),new Scalar(H_MAX,S_MAX,V_MAX),threshold);
+			Core.inRange(HSV,new Scalar(H_MIN1,S_MIN1,V_MIN1),new Scalar(H_MAX1,S_MAX1,V_MAX1),threshold1);
 			//perform morphological operations on thresholded image to eliminate noise
 			//and emphasize the filtered object(s)
-			if(useMorphOps)
+			if(useMorphOps){
 				morphOps(threshold);
+				morphOps(threshold1);
+			}
 			//pass in thresholded frame to our object tracking function
 			//this function will return the x and y coordinates of the
 			//filtered object
-			if(trackObjects)
-				trackFilteredObject(x,y,threshold,cameraFeed);
-
+			if(trackObjects){
+				trackFilteredObject(x,y,threshold,cameraFeed,new Scalar(0,255,0));
+				trackFilteredObject(x,y,threshold1,cameraFeed,new Scalar(255,0,0));
+			}
 			//show frames 
 			//display(windowName2,m2i(threshold));
 			display(windowName,m2i(cameraFeed));
@@ -263,7 +279,7 @@ public class Hello
 		lbl.setIcon(icon);
 		frame.add(lbl);
 		frame.setVisible(true);
-		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		}else{
 			ImageIcon icon=new ImageIcon(img2);
 			lbl.setIcon(icon);
