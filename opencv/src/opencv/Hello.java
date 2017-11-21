@@ -1,5 +1,6 @@
 package opencv;
 
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Image;
@@ -31,7 +32,14 @@ public class Hello
 {
 	//initial min and max HSV filter values.
 	//these will be changed using trackbars
-	
+	///*yellow
+	int H_MIN = 31;
+	int H_MAX = 107;
+	int S_MIN = 0;
+	int S_MAX = 153;
+	int V_MIN = 43;
+	int V_MAX = 255;
+	//*/
 	/*orange
 	int H_MIN = 0;
 	int H_MAX = 72;
@@ -40,7 +48,7 @@ public class Hello
 	int V_MIN = 161;
 	int V_MAX = 238;
 	//*/
-	///*orange
+	/*orange
 		int H_MIN =131;
 		int H_MAX = 183;
 		int S_MIN = 80;
@@ -72,8 +80,9 @@ public class Hello
 	public int V_MIN = 0;
 	public int V_MAX = 255;
 	//*/
-	JFrame frame;
-	JLabel lbl;
+	JFrame frame;	
+	JLabel lbl1=new JLabel();
+	JLabel lbl2=new JLabel();
 	//default capture width and height
 	int FRAME_WIDTH = 640;
 	int FRAME_HEIGHT = 480;
@@ -126,9 +135,9 @@ public class Hello
 		//create structuring element that will be used to "dilate" and "erode" image.
 		//the element chosen here is a 3px by 3px rectangle
 
-		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,new Size(3,3));
+		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE,new Size(6,6));
 		//dilate with larger element so make sure object is nicely visible
-		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,new Size(8,8));
+		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE,new Size(20,20));
 
 		Imgproc.erode(thresh,thresh,erodeElement);
 		Imgproc.erode(thresh,thresh,erodeElement);
@@ -169,7 +178,7 @@ public class Hello
 						x = (int) (moment.m10/area);
 						y = (int) (moment.m01/area);
 						objectFound = true;
-						refArea = area;
+						//refArea = area;
 					}else objectFound = false;
 
 					if(objectFound ==true){
@@ -233,11 +242,11 @@ public class Hello
 			//filtered object
 			if(trackObjects){
 				trackFilteredObject(x,y,threshold,cameraFeed,new Scalar(0,255,0));
-				trackFilteredObject(x,y,threshold1,cameraFeed,new Scalar(255,0,0));
+				//trackFilteredObject(x,y,threshold1,cameraFeed,new Scalar(255,0,0));
 			}
 			//show frames 
-			//display(windowName2,m2i(threshold));
-			display(windowName,m2i(cameraFeed));
+			display(lbl1,m2i(threshold));
+			display(lbl2,m2i(cameraFeed));
 			//display(windowName1,m2i(HSV));
 			System.out.println("H->("+H_MIN+","+H_MAX+")");
 			System.out.println("S->("+S_MIN+","+S_MAX+")");
@@ -267,13 +276,13 @@ public class Hello
 		return image;
 
 	}
-	public void display(String name,Image img2)
+	public void display(JLabel lbl,Image img2)
 	{   
 		//BufferedImage img=ImageIO.read(new File("/HelloOpenCV/lena.png"));
 		if(frame==null){
 		ImageIcon icon=new ImageIcon(img2);
-		frame=new JFrame(name);
-		frame.setLayout(new FlowLayout());        
+		frame=new JFrame();
+		frame.setLayout(new BorderLayout());        
 		frame.setSize(img2.getWidth(null)+50, img2.getHeight(null)+50);     
 		lbl=new JLabel();
 		lbl.setIcon(icon);
@@ -281,6 +290,15 @@ public class Hello
 		frame.setVisible(true);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		}else{
+			boolean flag=false;
+			for (int i=0;i<frame.getComponentCount();i++){
+			if (frame.getComponents()[i].equals(lbl))flag=true;
+			}
+			if(!flag){
+				if(lbl.equals(lbl1))frame.add(lbl,BorderLayout.WEST);
+				if(lbl.equals(lbl2))frame.add(lbl,BorderLayout.EAST);
+				lbl.setMinimumSize(new Dimension(2000,900));
+			}
 			ImageIcon icon=new ImageIcon(img2);
 			lbl.setIcon(icon);
 		}
