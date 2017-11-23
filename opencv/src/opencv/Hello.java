@@ -3,6 +3,7 @@ package opencv;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -21,6 +22,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt4;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
@@ -33,12 +35,12 @@ public class Hello
 	//initial min and max HSV filter values.
 	//these will be changed using trackbars
 	///*yellow
-	int H_MIN = 31;
-	int H_MAX = 107;
-	int S_MIN = 0;
-	int S_MAX = 153;
-	int V_MIN = 43;
-	int V_MAX = 255;
+	int H_MIN = 13;
+	int H_MAX = 31;
+	int S_MIN = 94;
+	int S_MAX = 206;
+	int V_MIN = 61;
+	int V_MAX = 132;
 	//*/
 	/*orange
 	int H_MIN = 0;
@@ -101,7 +103,9 @@ public class Hello
 	private String intToString(int number){
 		return number+"";
 	}
-
+	void filterChange(Mat cur, Mat pre){
+		cur=cur.mul(pre);
+	}
 	void drawObject(int x, int y,Mat frame,Scalar c){
 
 		//use some of the openCV drawing functions to draw cross hairs
@@ -128,24 +132,32 @@ public class Hello
 		else Imgproc.line(frame,new Point(x,y),new Point(FRAME_WIDTH,y),c,2);		
 		//Imgproc.putText(frame,"("+h+","+s+","+l+")",new Point(FRAME_WIDTH/2+30,FRAME_HEIGHT/2),1,1,c,2);
 		//Imgproc.circle(frame,new Point(FRAME_WIDTH/2,FRAME_HEIGHT/2),10,c,2);
-		 
+
 	}
 	void morphOps(Mat thresh){
 
 		//create structuring element that will be used to "dilate" and "erode" image.
 		//the element chosen here is a 3px by 3px rectangle
 
-		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE,new Size(6,6));
+		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE,new Size(3,3));
 		//dilate with larger element so make sure object is nicely visible
-		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE,new Size(20,20));
+		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE,new Size(8,8));
 
 		Imgproc.erode(thresh,thresh,erodeElement);
 		Imgproc.erode(thresh,thresh,erodeElement);
+		//Imgproc.erode(thresh,thresh,erodeElement);
 
+		Imgproc.dilate(thresh,thresh,dilateElement);
+		Imgproc.dilate(thresh,thresh,dilateElement);		
+		//Imgproc.dilate(thresh,thresh,dilateElement);
 
 		Imgproc.dilate(thresh,thresh,dilateElement);
 		Imgproc.dilate(thresh,thresh,dilateElement);
 
+		Imgproc.erode(thresh,thresh,erodeElement);
+		Imgproc.erode(thresh,thresh,erodeElement);
+		//Imgproc.dilate(thresh,thresh,dilateElement);
+		//Imgproc.erode(thresh,thresh,erodeElement);
 
 
 	}
@@ -174,25 +186,49 @@ public class Hello
 					//if the area is the same as the 3/2 of the image size, probably just a bad filter
 					//we only want the object with the largest area so we safe a reference area each
 					//iteration and compare it to the area in the next iteration.
-					if(area>MIN_OBJECT_AREA && area<MAX_OBJECT_AREA && area>refArea){
-						x = (int) (moment.m10/area);
-						y = (int) (moment.m01/area);
-						objectFound = true;
-						//refArea = area;
-					}else objectFound = false;
+					double epsilon=0.2;
+					//a=pr^2
+					//r=sqrt(a/p)
+					//c=2pr
+					//c=2psqrt(a/p)
+					double circ=2*Math.PI*Math.sqrt(area/Math.PI);
+
+					MatOfPoint2f contour = new MatOfPoint2f();
+					contours.get(index).convertTo(contour, CvType.CV_32F);
+					if(area>MIN_OBJECT_AREA && area<MAX_OBJECT_AREA){
+						if ((moment.mu20-moment.mu02<=(moment.mu20+moment.mu02)/2*epsilon)&&
+								(Imgproc.arcLength(contour,true)-circ)<=(Imgproc.arcLength(contour,true)+circ)/2*epsilon
+								){
+							x = (int) (moment.m10/area);
+							y = (int) (moment.m01/area);
+							objectFound = true;
+							//refArea = area;
+						}else{
+							objectFound = false;
+							Imgproc.putText(cameraFeed,"non circular object found",new Point(0,50),1,2,new Scalar(0,0,255),2);
+							System.out.println("("+moment.mu20+" = "+moment.mu02+"),("+Imgproc.arcLength(contour,true)+" = "+circ+")");
+						}
+					}else{
+						System.out.println("object of bad size found");
+					}
 
 					if(objectFound ==true){
-						
-						Imgproc.putText(cameraFeed,"Tracking Object",new Point(0,50),2,1,c,2);
-						//draw object location on screen
-						drawObject(x,y,cameraFeed,c);}
-				}
-				//let user know you found an object
-				
 
-			}else Imgproc.putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",new Point(0,50),1,2,new Scalar(0,0,255),2);
+						Imgproc.putText(cameraFeed,"Tracking Object",new Point(0,50),2,1,c,2);
+						System.out.println("object found");
+						//draw object location on screen
+						drawObject(x,y,cameraFeed,c);
+					}else{
+
+					}
+				}
+			}else{
+				Imgproc.putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",new Point(0,50),1,2,new Scalar(0,0,255),2);
+				System.out.println("too much noise");
+			}
 		}else{
 			Imgproc.putText(cameraFeed,"no objects found",new Point(0,50),1,2,new Scalar(0,0,255),2);
+			System.out.println("no object found");
 		}
 	}
 	public Hello(){
@@ -209,6 +245,7 @@ public class Hello
 		//matrix storage for binary threshold image
 		Mat threshold=new Mat();
 		Mat threshold1=new Mat();
+		Mat thresholdPre=null;
 		//x and y values for the location of the object
 		int x=0, y=0;
 		//create slider bars for HSV filtering
@@ -237,21 +274,24 @@ public class Hello
 				morphOps(threshold);
 				morphOps(threshold1);
 			}
+			if (thresholdPre==null)thresholdPre=threshold;
+			//filterChange(threshold,thresholdPre);
 			//pass in thresholded frame to our object tracking function
 			//this function will return the x and y coordinates of the
 			//filtered object
 			if(trackObjects){
 				trackFilteredObject(x,y,threshold,cameraFeed,new Scalar(0,255,0));
+				thresholdPre=threshold;
 				//trackFilteredObject(x,y,threshold1,cameraFeed,new Scalar(255,0,0));
 			}
 			//show frames 
-			display(lbl1,m2i(threshold));
+			//display(lbl2,m2i(threshold));
 			display(lbl2,m2i(cameraFeed));
 			//display(windowName1,m2i(HSV));
-			System.out.println("H->("+H_MIN+","+H_MAX+")");
-			System.out.println("S->("+S_MIN+","+S_MAX+")");
-			System.out.println("V->("+V_MIN+","+V_MAX+")");
-			
+			//System.out.println("H->("+H_MIN+","+H_MAX+")");
+			//System.out.println("S->("+S_MIN+","+S_MAX+")");
+			//System.out.println("V->("+V_MIN+","+V_MAX+")");
+
 		}
 	}
 	public static void main(String[] args)
@@ -280,28 +320,25 @@ public class Hello
 	{   
 		//BufferedImage img=ImageIO.read(new File("/HelloOpenCV/lena.png"));
 		if(frame==null){
-		ImageIcon icon=new ImageIcon(img2);
-		frame=new JFrame();
-		frame.setLayout(new BorderLayout());        
-		frame.setSize(img2.getWidth(null)+50, img2.getHeight(null)+50);     
-		lbl=new JLabel();
-		lbl.setIcon(icon);
-		frame.add(lbl);
-		frame.setVisible(true);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			ImageIcon icon=new ImageIcon(img2);
+			frame=new JFrame();
+			frame.setLayout(new FlowLayout());        
+			frame.setSize(img2.getWidth(null)+50, img2.getHeight(null)+50);  		
+			frame.setVisible(true);
+			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		}else{
 			boolean flag=false;
 			for (int i=0;i<frame.getComponentCount();i++){
-			if (frame.getComponents()[i].equals(lbl))flag=true;
+				if (frame.getComponents()[i].equals(lbl))flag=true;
 			}
-			if(!flag){
-				if(lbl.equals(lbl1))frame.add(lbl,BorderLayout.WEST);
-				if(lbl.equals(lbl2))frame.add(lbl,BorderLayout.EAST);
-				lbl.setMinimumSize(new Dimension(2000,900));
+			if(!flag){				
+				if(lbl.equals(lbl2))frame.add(lbl);
+				frame.setSize(lbl.getWidth()+25,lbl.getHeight()+25);
 			}
 			ImageIcon icon=new ImageIcon(img2);
 			lbl.setIcon(icon);
 		}
+		frame.repaint();
 		/*
 		 try {		 
 			Thread.sleep(10);
@@ -309,7 +346,7 @@ public class Hello
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}//*/
-		
+
 
 	}
 	public void sliders(){
@@ -317,62 +354,82 @@ public class Hello
 		slide.setLayout(new FlowLayout());
 		slide.setVisible(true);
 		slide.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		slide.setLocation(600, 600);
-		slide.setMinimumSize(new Dimension(405,150));
+		slide.setLocation(0,FRAME_HEIGHT+50);			
+		JLabel hminL=new JLabel(H_MIN+"");
 		JSlider hmin=new JSlider(0,255,H_MIN);
 		hmin.addChangeListener(new ChangeListener(){
 
 			@Override
 			public void stateChanged(ChangeEvent e) {				
 				H_MIN=hmin.getValue();
+				hminL.setText(H_MIN+"");
 			}		
 		});
+		slide.add(hminL);
 		slide.add(hmin);
+		JLabel hmaxL=new JLabel(H_MAX+"");
 		JSlider hmax=new JSlider(0,255,H_MAX);
 		hmax.addChangeListener(new ChangeListener(){
 
 			@Override
 			public void stateChanged(ChangeEvent e) {				
 				H_MAX=hmax.getValue();
+				hmaxL.setText(H_MAX+"");
 			}		
 		});
 		slide.add(hmax);
+		slide.add(hmaxL);		
+		JLabel sminL=new JLabel(S_MIN+"");
 		JSlider smin=new JSlider(0,255,S_MIN);
 		smin.addChangeListener(new ChangeListener(){
 
 			@Override
 			public void stateChanged(ChangeEvent e) {				
 				S_MIN=smin.getValue();
+				sminL.setText(S_MIN+"");
 			}		
 		});
+		slide.add(sminL);
 		slide.add(smin);
+		JLabel smaxL=new JLabel(S_MAX+"");
 		JSlider smax=new JSlider(0,255,S_MAX);
 		smax.addChangeListener(new ChangeListener(){
 
 			@Override
 			public void stateChanged(ChangeEvent e) {				
 				S_MAX=smax.getValue();
+				smaxL.setText(S_MAX+"");
 			}		
 		});
 		slide.add(smax);
+		slide.add(smaxL);
+
+		JLabel vminL=new JLabel(V_MIN+"");
 		JSlider vmin=new JSlider(0,255,V_MIN);
 		vmin.addChangeListener(new ChangeListener(){
 
 			@Override
 			public void stateChanged(ChangeEvent e) {				
 				V_MIN=vmin.getValue();
+				vminL.setText(V_MIN+"");
 			}		
 		});
+		slide.add(vminL);
 		slide.add(vmin);
+		JLabel vmaxL=new JLabel(V_MAX+"");
 		JSlider vmax=new JSlider(0,255,V_MAX);
 		vmax.addChangeListener(new ChangeListener(){
 
 			@Override
 			public void stateChanged(ChangeEvent e) {				
 				V_MAX=vmax.getValue();
+				vmaxL.setText(V_MAX+"");
 			}		
 		});
 		slide.add(vmax);
-		System.out.println("slider created");
+		slide.add(vmaxL);		
+		slide.pack();
+		slide.setSize(new Dimension(vmaxL.getWidth()*2+vmax.getWidth()*2+20,vmaxL.getHeight()*9));
+		slide.repaint();
 	}
 }
