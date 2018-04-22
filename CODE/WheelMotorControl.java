@@ -40,6 +40,8 @@ public class WheelMotorControl {
 	
 	private static boolean end_effector_on = false;
 	
+	private int state = 0;
+	
 	//Just for testing purposes
 	public static void main(String[] args) throws Exception {
 		WheelMotorControl handler = new WheelMotorControl();
@@ -148,78 +150,6 @@ public class WheelMotorControl {
         ende_pin.setPwm(0);
         
         sc.close();*/
-        
-        /*//Backwards speed test
-        int pwm = 160;
-        System.out.println("Setting throttle to neutral for backwards test. When you hear the beeps, enter 's' to speed up, enter to exit.");
-        ende_pin.setPwm(pwm);
-        Scanner sc=new Scanner(System.in);
-        String input = sc.next();
-        while (input.equals("s") && pwm > 120){
-        	System.out.println("Increasing speed by 5: ");
-        	pwm = pwm - 5;
-        	System.out.println(pwm);
-        	ende_pin.setPwm(pwm);
-        	System.out.println("Increase more? Enter 's'");
-        	input = sc.next();
-        }
-        System.out.println("Setting ESC input to 0 and exiting.\n");
-        ende_pin.setPwm(0);
-        
-        sc.close();*/
-        
-        /*//Forewards speed test
-        int pwm = 200;
-        System.out.println("Setting throttle to neutral for forewards test. When you hear the beeps, enter 's' to speed up, enter to exit.");
-        ende_pin.setPwm(pwm);
-        while ((char)System.in.read()=='s' && pwm > 100){
-        	System.out.println("Increasing speed by 5% of max.\n");
-        	pwm = pwm + 5;
-        	ende_pin.setPwm(pwm);
-        }
-        System.out.println("Input is already at max. Setting ESC input to 0 and exiting.\n");
-        ende_pin.setPwm(0);*/
-        
-        
-        /*// For setting the ESC throttle range
-        ende_pin.setPwm(180);
-        System.out.println("Max signal?");
-        System.in.read();
-        
-        ende_pin.setPwm(240);
-        
-        System.out.println("Min signal?");
-        System.in.read();
-        
-        ende_pin.setPwm(120);
-        
-        System.out.println("Stop?");
-        System.in.read();
-        
-        ende_pin.setPwm(0);*/
-        
-        
-        
-		//ende_pin.setPwm(240);
-		//ldrive_pin.setPwm(240);
-		//System.out.println("Connect your power");
-	    //System.in.read();
-		
-		//ende_pin.setPwm(120);
-		//ldrive_pin.setPwm(120);
-		//Thread.sleep(1000);
-		//ende_pin.setPwm(0);
-		//ldrive_pin.setPwm(0);
-		
-		//System.out.println("Arming");
-	    //System.in.read();
-	    //Thread.sleep(1000);
-	    
-	    //ende_pin.setPwm(140);
-	    //ldrive_pin.setPwm(120);
-	    //Thread.sleep(1500);
-	    //ende_pin.setPwm(0);
-	    //ldrive_pin.setPwm(0);
 	    
 		gpio.shutdown();
 		
@@ -241,6 +171,82 @@ public class WheelMotorControl {
 		return 0;
 	}
 	
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// The following are some example functions. The idea is, we need to stop briefly before switching direction,
+	// and speed up gradually.
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// TODO: add a way to stop all calls in progress if stop is called (ie, we don't want to call stop and then
+	// half a second later start up again because we said to turn right before calling stop)
+	
+	public void stopDrive() throws Exception{
+		state = 0;
+		ldrive_pin.setPwm(0);
+ 		rdrive_pin.setPwm(0);
+ 		rdir_pin.setState(PinState.LOW);
+        ldir_pin.setState(PinState.LOW);
+	}
+	
+	public void turnRight() throws Exception{
+		if (state == 1) return;
+		state = 1;
+		ldrive_pin.setPwm(0);
+ 		rdrive_pin.setPwm(0);
+ 		
+ 		Thread.sleep(500);
+ 		
+ 		rdir_pin.setState(PinState.HIGH);
+        ldir_pin.setState(PinState.LOW);
+ 		ldrive_pin.setPwm(50*20);
+ 		rdrive_pin.setPwm(50);
+	}
+	
+	public void turnLeft() throws Exception{
+		if (state == 2) return;
+		state = 2;
+		ldrive_pin.setPwm(0);
+ 		rdrive_pin.setPwm(0);
+ 		
+ 		Thread.sleep(500);
+ 		
+ 		rdir_pin.setState(PinState.LOW);
+        ldir_pin.setState(PinState.HIGH);
+ 		ldrive_pin.setPwm(50*20);
+ 		rdrive_pin.setPwm(50);
+	}
+	
+	public void driveFast() throws Exception{
+		if (state == 3) return;
+		state = 3;
+		ldrive_pin.setPwm(0);
+ 		rdrive_pin.setPwm(0);
+ 		
+ 		Thread.sleep(500);
+ 		
+		rdir_pin.setState(PinState.LOW);
+        ldir_pin.setState(PinState.LOW);
+		ldrive_pin.setPwm(50*20);
+ 		rdrive_pin.setPwm(50);
+ 		
+ 		Thread.sleep(500);
+ 		
+ 		ldrive_pin.setPwm(100*20);
+ 		rdrive_pin.setPwm(100);
+	}
+	
+	public void driveSlow() throws Exception{
+		if (state == 4) return;
+		state = 4;
+		ldrive_pin.setPwm(0);
+ 		rdrive_pin.setPwm(0);
+ 		
+ 		Thread.sleep(500);
+ 		
+ 		rdir_pin.setState(PinState.LOW);
+        ldir_pin.setState(PinState.LOW);
+        ldrive_pin.setPwm(50*20);
+ 		rdrive_pin.setPwm(50);
+	}
+	
 	
 	public WheelMotorControl() throws Exception {
 		gpio = GpioFactory.getInstance();
@@ -248,7 +254,7 @@ public class WheelMotorControl {
 		ende_pin = gpio.provisionPwmOutputPin(RaspiPin.GPIO_26); //PWM0
 		ldrive_pin = gpio.provisionPwmOutputPin(RaspiPin.GPIO_23); //PWM1
 		rdrive_pin = gpio.provisionSoftPwmOutputPin(RaspiPin.GPIO_03);
-		ldir_pin = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_29, "DirL", PinState.LOW);
+		ldir_pin = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_29, "DirL", PinState.LOW);  //LOW=forward
 		rdir_pin = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_07, "DirR", PinState.LOW);
 		
 		com.pi4j.wiringpi.Gpio.pwmSetMode(com.pi4j.wiringpi.Gpio.PWM_MODE_MS);
@@ -259,18 +265,14 @@ public class WheelMotorControl {
         
         Thread.sleep(1000);
         
-        //muxpin.setState(PinState.HIGH);
+        // Make sure motors are turned off to start
+ 		ldrive_pin.setPwm(0);
+ 		rdrive_pin.setPwm(0);
+ 		
         ende_pin.setPwm(160);
         
         System.out.println("Turn on the ESC NOW. Press enter AFTER the beeps are done.");
         System.in.read();
-        //muxpin.setState(PinState.LOW);
-		
-		// Make sure motors are turned off to start
-		ldrive_pin.setPwm(0);
-		rdrive_pin.setPwm(0);
-		rdir_pin.setState(PinState.HIGH);
-        ldir_pin.setState(PinState.HIGH);
 		
 		// Initialize values to stopped, driving straight
 		//robotSpeed = 0;
