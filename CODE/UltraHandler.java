@@ -9,7 +9,7 @@ import com.pi4j.io.gpio.PinPullResistance;
 import com.pi4j.io.gpio.RaspiPin;
 
 //GPIO_00 for trigger (pin 11), GPIO_02 for echo (pin 13)
-public class ProximityHandler {
+public class UltraHandler {
 	private final int PULSE = 10000;  			// ns = 10us
 	private final int SPEED_OF_SOUND = 34029;	// cm/s
 	
@@ -17,11 +17,11 @@ public class ProximityHandler {
 	private GpioPinDigitalInput echo;
 	private GpioPinDigitalOutput trigger;
 	
-	public ProximityHandler() {
-        gpio = GpioFactory.getInstance();
+	public UltraHandler() {
+		gpio = GpioFactory.getInstance();
 		
-        trigger = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_00, "PinTrigger", PinState.LOW);
-        echo = gpio.provisionDigitalInputPin(RaspiPin.GPIO_02, "PinEcho", PinPullResistance.PULL_DOWN);
+        	trigger = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_00, "PinTrigger", PinState.LOW);
+        	echo = gpio.provisionDigitalInputPin(RaspiPin.GPIO_02, "PinEcho", PinPullResistance.PULL_DOWN);
 	}
 	
 	public void destruct() {
