@@ -171,80 +171,130 @@ public class WheelMotorControl {
 		return 0;
 	}
 	
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// The following are some example functions. The idea is, we need to stop briefly before switching direction,
-	// and speed up gradually.
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// TODO: add a way to stop all calls in progress if stop is called (ie, we don't want to call stop and then
-	// half a second later start up again because we said to turn right before calling stop)
 	
-	public void stopDrive() throws Exception{
-		state = 0;
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// The following is meant to be called from a thread in Path Planning. The idea is, we need to stop briefly 
+	// before switching direction, and speed up gradually.
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+	
+	// The states in order of precedence: 
+	// | 0    | 1         | 2         | 3         | 4        | 5         | 6        | 7       |
+	// | stop | driveSlow | driveFast | bankRight | bankLeft | turnRight | turnLeft | reverse |
+	public void drive() {
+		long stopTimer = System.currentTimeMillis();
+		boolean stopTiming = false;
+		long slowTimer = System.currentTimeMillis();
+		boolean slowTiming = false;
+		int prev_state = 0;
+		while (true) {
+			if (state == 0) {
+				stopDrive();
+				prev_state = 0;
+				slowTiming = false;
+				stopTiming = false;
+			} else {
+				// Check if a new state has been requested
+				if (state != prev_state) {
+					// Start counting, for those that need it
+					// If 5/6/7 has been entered from any state, stop for 250 ms
+					// If the previous state was 5/6/7, stop for 250 ms
+					// If 1 is entered, continue (no count)
+					// If 2 is entered from 0/5/6/7, slow for 250 ms
+					// Not sure about banking yet
+					
+					if (state == 5 || state == 6 || state == 7 || prev_state == 5 || prev_state == 6 || prev_state == 7) {
+						stopTiming = true;
+						stopTimer = System.currentTimeMillis();
+						stopDrive();
+					} else if (state == 1) {
+						driveSlow();
+					} else if (state == 2 && prev_state == 0) {
+						driveSlow();
+						slowTimer = System.currentTimeMillis();
+						slowTiming = true;
+					} else if (state == 2 && prev_state == 1) {
+						driveFast();
+					} else {
+						stopDrive();
+					}
+					
+					prev_state = state;
+					
+				} else {
+					// If the stop timer ends 
+					if (stopTiming == true && System.currentTimeMillis() >= stopTimer + 250) {
+						if (state == 1) {
+							driveSlow();
+						} else if (state == 2) {
+							driveSlow();
+							slowTimer = System.currentTimeMillis();
+							slowTiming = true;
+						} else if (state == 5) {
+							turnRight();
+						} else if (state == 6) {
+							turnLeft();
+						} else if (state == 7) {
+							reverse();
+						} else {
+							stopDrive();
+						}
+						stopTiming = false;
+					}
+					
+					// If the slow timer ends (currently only for driveFast)
+					if (slowTiming == true && System.currentTimeMillis() >= slowTimer + 250) {
+						slowTiming = false;
+						driveFast();
+					}
+				}
+			}
+		}
+	}
+	
+	private void stopDrive() {
 		ldrive_pin.setPwm(0);
  		rdrive_pin.setPwm(0);
  		rdir_pin.setState(PinState.LOW);
         ldir_pin.setState(PinState.LOW);
 	}
 	
-	public void turnRight() throws Exception{
-		if (state == 1) return;
-		state = 1;
-		ldrive_pin.setPwm(0);
- 		rdrive_pin.setPwm(0);
- 		
- 		Thread.sleep(500);
- 		
+	private void turnRight() {
  		rdir_pin.setState(PinState.HIGH);
         ldir_pin.setState(PinState.LOW);
  		ldrive_pin.setPwm(50*20);
  		rdrive_pin.setPwm(50);
 	}
 	
-	public void turnLeft() throws Exception{
-		if (state == 2) return;
-		state = 2;
-		ldrive_pin.setPwm(0);
- 		rdrive_pin.setPwm(0);
- 		
- 		Thread.sleep(500);
- 		
+	private void turnLeft() {
  		rdir_pin.setState(PinState.LOW);
         ldir_pin.setState(PinState.HIGH);
  		ldrive_pin.setPwm(50*20);
  		rdrive_pin.setPwm(50);
 	}
 	
-	public void driveFast() throws Exception{
-		if (state == 3) return;
-		state = 3;
-		ldrive_pin.setPwm(0);
- 		rdrive_pin.setPwm(0);
- 		
- 		Thread.sleep(500);
- 		
+	private void driveFast() {
 		rdir_pin.setState(PinState.LOW);
         ldir_pin.setState(PinState.LOW);
-		ldrive_pin.setPwm(50*20);
- 		rdrive_pin.setPwm(50);
- 		
- 		Thread.sleep(500);
- 		
  		ldrive_pin.setPwm(100*20);
  		rdrive_pin.setPwm(100);
 	}
 	
-	public void driveSlow() throws Exception{
-		if (state == 4) return;
-		state = 4;
-		ldrive_pin.setPwm(0);
- 		rdrive_pin.setPwm(0);
- 		
- 		Thread.sleep(500);
- 		
+	private void driveSlow() {
  		rdir_pin.setState(PinState.LOW);
         ldir_pin.setState(PinState.LOW);
         ldrive_pin.setPwm(50*20);
  		rdrive_pin.setPwm(50);
+	}
+	
+	private void reverse() {
+ 		rdir_pin.setState(PinState.HIGH);
+        ldir_pin.setState(PinState.HIGH);
+        ldrive_pin.setPwm(50*20);
+ 		rdrive_pin.setPwm(50);
+	}
+	
+	public void changeDriveState(int new_state) {
+		state = new_state;
 	}
 	
 	
