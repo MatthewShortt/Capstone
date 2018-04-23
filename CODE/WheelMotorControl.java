@@ -7,7 +7,7 @@ import com.pi4j.io.gpio.*;
 
 // The two PWM pins are GPIO26 and GPIO23, pin numbers 32 and 33 respectively.
 // The current test code should spin a motor at 50% for 5 seconds, 25% for 5 seconds, then turn off.
-public class WheelMotorControl {
+public class WheelMotorControl extends Thread {
 
 
 	private GpioController gpio;
@@ -36,7 +36,9 @@ public class WheelMotorControl {
 		ende_pin.setPwm(0);
 		return 0;
 	}
-
+	public void run(){
+		drive();
+	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// The following is meant to be called from a thread in Path Planning. The idea is, we need to stop briefly 
