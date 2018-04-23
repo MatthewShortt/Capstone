@@ -7,86 +7,46 @@ import com.pi4j.io.gpio.PinState;
 import com.pi4j.io.gpio.RaspiPin;
 
 public class InfraHandler {
-	private final static boolean DISPLAY_DIGIT = false;
-    private final static boolean DEBUG         = false;
+	private final boolean DISPLAY_DIGIT = false;
     
-    private static Pin spiClk  = RaspiPin.GPIO_22; // Pin #31, clock
-    private static Pin spiMiso = RaspiPin.GPIO_27; // Pin #36, data in.  MISO: Master In Slave Out
-    private static Pin spiMosi = RaspiPin.GPIO_25; // Pin #37, data out. MOSI: Master Out Slave In
-    private static Pin spiCs   = RaspiPin.GPIO_21; // Pin #29, Chip Select
+    private Pin spiClk  = RaspiPin.GPIO_22; // Pin #31, clock
+    private Pin spiMiso = RaspiPin.GPIO_27; // Pin #36, data in.  MISO: Master In Slave Out
+    private Pin spiMosi = RaspiPin.GPIO_25; // Pin #37, data out. MOSI: Master Out Slave In
+    private Pin spiCs   = RaspiPin.GPIO_21; // Pin #29, Chip Select
     
-    private static int ADC_CHANNEL = 0; // Between 0 and 7, 8 channels on the MCP3008
+    private int ADC_CHANNEL = 0; // Between 0 and 7, 8 channels on the MCP3008
     
-    private static GpioPinDigitalInput  misoInput        = null;
-    private static GpioPinDigitalOutput mosiOutput       = null;
-    private static GpioPinDigitalOutput clockOutput      = null;
-    private static GpioPinDigitalOutput chipSelectOutput = null;
+    private GpioController gpio;
+    private GpioPinDigitalInput  misoInput        = null;
+    private GpioPinDigitalOutput mosiOutput       = null;
+    private GpioPinDigitalOutput clockOutput      = null;
+    private GpioPinDigitalOutput chipSelectOutput = null;
     
-    private static boolean go = true;
+    public InfraHandler() {
+    	gpio = GpioFactory.getInstance();
+        
+        mosiOutput       = gpio.provisionDigitalOutputPin(spiMosi, "MOSI", PinState.LOW);
+        clockOutput      = gpio.provisionDigitalOutputPin(spiClk,  "CLK",  PinState.LOW);
+        chipSelectOutput = gpio.provisionDigitalOutputPin(spiCs,   "CS",   PinState.LOW);
+        
+        misoInput        = gpio.provisionDigitalInputPin(spiMiso, "MISO");
+    }
     
-    public static void main(String[] args)
-    {
-      GpioController gpio = GpioFactory.getInstance();
-      
-      mosiOutput       = gpio.provisionDigitalOutputPin(spiMosi, "MOSI", PinState.LOW);
-      clockOutput      = gpio.provisionDigitalOutputPin(spiClk,  "CLK",  PinState.LOW);
-      chipSelectOutput = gpio.provisionDigitalOutputPin(spiCs,   "CS",   PinState.LOW);
-      
-      misoInput        = gpio.provisionDigitalInputPin(spiMiso, "MISO");
-      
-      Runtime.getRuntime().addShutdownHook(new Thread()
-                                           {
-                                             public void run()
-                                             {
-                                               System.out.println("Shutting down.");
-                                               go = false;
-                                             }
-                                           });
-      double distance;
-      double adcVal;
-      
-      
-      
-      double max = 0;
-      double min = 160;
-      double sum = 0;
-      for (int i = 0; i < 30; i++) {
-    	  adcVal = read();
-          distance = -1;
-  	      if (adcVal != 0) distance = 70.0/adcVal - 6; 
-  	      if (distance > 150) distance = -1;
-  	      
-  	      sum += distance;
-  	      if (distance < min) min = distance;
-  	      if (distance > max) max = distance;
-  	      
-  	      System.out.println(distance + " cm");
-          try { Thread.sleep(100L); } catch (InterruptedException ie) { ie.printStackTrace(); }
-      }
-      System.out.println("average: " + sum/30);
-      System.out.println("min: " + min);
-      System.out.println("max: " + max);
-      
-      
-      
-      
-      /*while (go)
-      {
-        adcVal = read();
-        distance = -1;
-	    if (adcVal != 0) distance = 70.0/adcVal - 6; 
-	    
-	    if (DEBUG) System.out.println("From ADC in volts:" + Double.toString(adcVal));        
-	    
-	    System.out.println(distance + " cm");
-        try { Thread.sleep(100L); } catch (InterruptedException ie) { ie.printStackTrace(); }
-      }
-      System.out.println("Bye...");*/
-      gpio.shutdown();
-    }   
+    public void destruct() {
+    	gpio.shutdown();
+    }
+    
+    // Returns distance in cm, or -1 if out of range
+    public double getDistance() {
+    	double adcVal = read();
+        double distance = -1;
+		if (adcVal != 0) distance = 70.0/adcVal - 6; 
+		if (distance > 150) distance = -1;
+		return distance;
+    }
     
     // Returns a value in volts
-    private static double read(){
+    private double read(){
       chipSelectOutput.high();
       
       clockOutput.low();
@@ -129,6 +89,6 @@ public class InfraHandler {
       adcOut >>= 1; // Drop first bit
         
       adcOut = (int) (adcOut*3300/1024 + 0.5);  // Convert to mV
-      return 1.0*adcOut/1000;					// Convert to V
+      	return 1.0*adcOut/1000;					// Convert to V
     }
 }
