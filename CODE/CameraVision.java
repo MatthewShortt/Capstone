@@ -74,12 +74,15 @@ public class CameraVision {
 		if (locations.length>0)return map(locations);
 		return new int[0];
 	}
+	
 	private int[] map(int[][] loc){		
 		int [][]newLoc=new int[loc.length][2];
 		for(int i=0;i<loc.length;i++){
 			newLoc[i][0]=loc[i][0]-WIDTH;
 			newLoc[i][1]=loc[i][1];
 		}
+		
+		// Find the closest ball
 		double d=mag(newLoc[0]);
 		int di=0;
 		for(int i=1;i<loc.length;i++){
@@ -88,17 +91,21 @@ public class CameraVision {
 				di=i;
 			}
 		}
+		
 		int[] val=new int[2];
-		val[0]=(int)d;
-		val[1]=(int) Math.atan(newLoc[di][1]/newLoc[di][0]);
+		val[0]=(int)d;  //Distance to ball
+		
+		// newLoc[][0] is x, newLoc[][1] is y
+		val[1]=(int) Math.atan(newLoc[di][0]/newLoc[di][1])*180/Math.PI;
+		
 		return val;		
 	}
+	
 	private double mag(int[]x){
 		return (Math.sqrt(Math.pow(x[0], 2)+Math.pow(x[1], 2)));
 	}
+	
 	int[][] trackFilteredObject2(Mat threshold,Mat cam){
-
-
 		/// Reduce the noise so we avoid false circle detection
 		//Imgproc.cvtColor(cameraFeed,threshold,Imgproc.COLOR_BGR2GRAY);
 		Imgproc.GaussianBlur( threshold,threshold, new Size(BLUR, BLUR), 2, 2 );
@@ -123,14 +130,14 @@ public class CameraVision {
 			int y=(int)vCircle[1];
 			int r=(int)vCircle[2];
 			int count=0;
-			for (int j = y-r; j < y+r; j++) {
-				for (int k = x; Math.pow(k-x,2) + Math.pow((j-y),2) <= Math.pow(r,2); k--) {
+			//for (int j = y-r; j < y+r; j++) {
+				//for (int k = x; Math.pow(k-x,2) + Math.pow((j-y),2) <= Math.pow(r,2); k--) {
 					//if(k<tempM.rows()&&j<tempM.cols())count+=(int)tempM.get(k,j)[0];
-				}
-				for (int k = x+1; Math.pow(k-x,2) + Math.pow((j-y),2) <= Math.pow(r,2); k++) {
+				//}
+				//for (int k = x+1; Math.pow(k-x,2) + Math.pow((j-y),2) <= Math.pow(r,2); k++) {
 					//if(k<tempM.rows()&&j<tempM.cols())count+=(int)tempM.get(k,j)[0];
-				}
-			}
+				//}
+			//}
 			int ColourThreshold=1;
 			if (count<Math.PI*r*r*ColourThreshold||true){
 				int[] tempI=new int[3];
@@ -147,12 +154,14 @@ public class CameraVision {
 		}
 		return locations;
 	}
+	
 	private void morphOps2(Mat thresh){
 		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,new Size(ERODE,ERODE));		
 		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT,new Size(DILATE,DILATE));
 		Imgproc.dilate(thresh,thresh,dilateElement);
 		Imgproc.erode(thresh,thresh,erodeElement);
 	}
+	
 	private BufferedImage m2i(Mat m){
 		// source: http://answers.opencv.org/question/10344/opencv-java-load-image-to-gui/
 		// Fastest code
