@@ -17,27 +17,41 @@ public class WheelMotorControl extends Thread {
 	private GpioPinDigitalOutput rdir_pin;
 	private GpioPinDigitalOutput ldir_pin;
 
+	private BumpHandler bump;
 
 	private volatile int state = 0;
 	private int stateL;
+	private boolean estop = false;
 
-	public int endEffectorStart() {
+	public void endEffectorStart() {
 		ende_pin.setPwm(152);  //Minimum reverse
 		return 0;
 	}
 
-	public int endEffectorStop() {
+	public void endEffectorStop() {
 		ende_pin.setPwm(160);  //Neutral
 		return 0;
 	}
 
 	// The end effector must be armed again after calling this function
-	public int endEffectorEStop() {
+	public void endEffectorEStop() {
 		ende_pin.setPwm(0);
 		return 0;
 	}
 	public void run(){
 		drive();
+	}
+	
+	private void rearm() {
+		endEffectorStop();
+		
+		System.out.println("Outputting PWM to rearm the ESC. Turn on the ESC, and then press enter after the beeps have finished. If you do not wait, you will not be able to use the end effector.");
+		try {
+			System.in.read();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +67,25 @@ public class WheelMotorControl extends Thread {
 		boolean stopTiming = false;
 		long slowTimer = System.currentTimeMillis();
 		boolean slowTiming = false;
+		boolean bump_state = false;
 		int prev_state = 0;
 		while (true) {
 			stateL=state;
+			bump_state = bump.getBump();
+			if (estop || bump_state) {
+				endEffectorEStop();
+				stopDrive();
+				stateL = 0;
+				estop = true;
+			}
+			if (estop && !bump_state) {
+				// Note that the robot will not move until rearmed
+				rearm();
+				stateL = 0;
+				estop = false;
+				if (bump.getBump()) continue;
+			}
+			
 			if (stateL == 0) {
 				stopDrive();
 				prev_state = 0;
@@ -175,6 +205,8 @@ public class WheelMotorControl extends Thread {
 		rdrive_pin = gpio.provisionSoftPwmOutputPin(RaspiPin.GPIO_03);
 		ldir_pin = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_29, "DirL", PinState.LOW);  //LOW=forward
 		rdir_pin = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_07, "DirR", PinState.LOW);
+		
+		bump = new BumpHandler();
 
 		com.pi4j.wiringpi.Gpio.pwmSetMode(com.pi4j.wiringpi.Gpio.PWM_MODE_MS);
 		com.pi4j.wiringpi.Gpio.pwmSetRange(2000);
