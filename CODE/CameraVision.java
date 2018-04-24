@@ -96,7 +96,7 @@ public class CameraVision {
 		val[0]=(int)d;  //Distance to ball
 		
 		// newLoc[][0] is x, newLoc[][1] is y
-		val[1]=(int) Math.atan(newLoc[di][0]/newLoc[di][1])*180/Math.PI;
+		val[1]=(int) (Math.atan(newLoc[di][0]/newLoc[di][1])*180/Math.PI);
 		
 		return val;		
 	}

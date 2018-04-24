@@ -25,18 +25,15 @@ public class WheelMotorControl extends Thread {
 
 	public void endEffectorStart() {
 		ende_pin.setPwm(152);  //Minimum reverse
-		return 0;
 	}
 
 	public void endEffectorStop() {
 		ende_pin.setPwm(160);  //Neutral
-		return 0;
 	}
 
 	// The end effector must be armed again after calling this function
 	public void endEffectorEStop() {
 		ende_pin.setPwm(0);
-		return 0;
 	}
 	public void run(){
 		drive();
